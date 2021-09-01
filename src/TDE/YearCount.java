@@ -1,7 +1,5 @@
 package TDE;
 
-import java.io.IOException;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
@@ -15,9 +13,11 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 import org.apache.log4j.BasicConfigurator;
 
-public class BrazilCount {
+import java.io.IOException;
 
-    //  Esta classe é reponsável por contar em quantas transações o Brasil aparece
+public class YearCount {
+
+    //  Esta classe é reponsável por contar quantas transações foram feitas por ano
 
     public static void main(String[] args) throws  Exception {
 
@@ -31,12 +31,12 @@ public class BrazilCount {
 
         Path output = new Path(files[1]);
 
-        Job j = new Job(c, "brazilcount");
+        Job j = new Job(c, "yearcount");
 
         //  Registro de classes
-        j.setJarByClass(BrazilCount.class);
-        j.setMapperClass(MapForBrazilCount.class);
-        j.setReducerClass(ReducerForBrazilCount.class);
+        j.setJarByClass(YearCount.class);
+        j.setMapperClass(YearCount.MapForYearCount.class);
+        j.setReducerClass(YearCount.ReducerForYearCount.class);
 
         //  Definição dos tipos de saida
         j.setMapOutputKeyClass(Text.class);
@@ -55,10 +55,10 @@ public class BrazilCount {
 
     }
 
-    public static class MapForBrazilCount extends Mapper<LongWritable, Text, Text, IntWritable> {
+    public static class MapForYearCount extends Mapper<LongWritable, Text, Text, IntWritable> {
 
         public void map(LongWritable key, Text value, Context con)
-            throws  IOException, InterruptedException {
+                throws IOException, InterruptedException {
 
             //  Extraindo o conteudo da linha
             String content = value.toString();
@@ -66,35 +66,21 @@ public class BrazilCount {
             //  Quebrando a linha
             String[] contentSplit = content.split(";");
 
-            //  Acessar o país (posição 0)
-            String country = contentSplit[0];
+            //  Acessar o ano (posição 1)
+            String year = contentSplit[1];
 
             int occurrence = 1;
 
-            con.write(new Text(country), new IntWritable(occurrence));
-
-            /*
-            for (String p : contentSplit) {
-
-                //  Gerando chave
-                Text outKey = new Text(p);
-
-                //  Gerando valor
-                IntWritable outValue = new IntWritable(1);
-
-                con.write(outKey, outValue);
-
-            }
-             */
+            con.write(new Text(year), new IntWritable(occurrence));
 
         }
 
     }
 
-    public static class ReducerForBrazilCount extends Reducer<Text, IntWritable, Text, IntWritable> {
+    public static class ReducerForYearCount extends Reducer<Text, IntWritable, Text, IntWritable> {
 
         public void reduce(Text key, Iterable<IntWritable> values, Context con)
-            throws IOException, InterruptedException {
+                throws IOException, InterruptedException {
 
             int sum = 0;
             for (IntWritable v : values) {
