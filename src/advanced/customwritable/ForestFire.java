@@ -13,6 +13,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.log4j.BasicConfigurator;
 import java.io.IOException;
 
+
 public class ForestFire {
 
     public static void main(String[] args) throws Exception {
@@ -30,71 +31,63 @@ public class ForestFire {
         // criacao do job e seu nome
         Job j = new Job(c, "forestfire");
 
-        //  registro de classes
+        // registro de classes
         j.setJarByClass(ForestFire.class);
         j.setMapperClass(ForestFireMapper.class);
         j.setReducerClass(ForestFireReducer.class);
 
-        //  definição dos tipos de saida
+        // definicao dos tipos de saida
         // map
         j.setMapOutputKeyClass(Text.class);
         j.setMapOutputValueClass(ForestFireWritable.class);
 
-        //  reduce
+        // reduce
         j.setOutputKeyClass(Text.class);
         j.setOutputValueClass(ForestFireWritable.class);
 
-        //  definição dos tipos de entrada e saida
+        // definicao dos arquivos de entrada e saida
         FileInputFormat.addInputPath(j, input);
         FileOutputFormat.setOutputPath(j, output);
 
+        // executa o job
         System.exit(j.waitForCompletion(true) ? 0 : 1);
     }
 
-    public class ForestFireMapper extends Mapper<Object, Text, Text, ForestFireWritable> {
-        public void map(Object key, Text value, Context con) throws IOException,
+    public static class ForestFireMapper extends Mapper<Object, Text, Text, ForestFireWritable> {
+        public void map(Object key, Text value, Context context) throws IOException,
                 InterruptedException {
 
-            //  Obtendo o valor da linha
-            String line = value.toString();
+            // Pega linha
+            String linha = value.toString();
 
-            //  Quebrando a linha em campos
-            String campos[] = line.split(",");
+            // Quebra em campos
+            String[] campos = linha.split(",");
 
-            //  Acessando a posição 2 (mes)
-            String month = campos[2];
+            // Pega mes, temperatura e vento
+            String mes = campos[2];
+            double temperatura = Double.parseDouble(campos[8]);
+            double vento = Double.parseDouble(campos[10]);
 
-            //  Acessando a posição 8 (temperatura)
-            double temp = Double.parseDouble(campos[8]);
-
-            //  Acessando a posição 10 (vento)
-            double wind = Double.parseDouble(campos[10]);
-
-            //  Emitindo os parametros do contexto
-            con.write(new Text(month), new ForestFireWritable(temp, wind));
-
+            // enviando informacao pro reduce
+            context.write(new Text(mes), new ForestFireWritable(temperatura, vento));
         }
     }
 
-    public class ForestFireReducer extends Reducer<Text, ForestFireWritable, Text, ForestFireWritable> {
+    public static class ForestFireReducer extends Reducer<Text, ForestFireWritable, Text, ForestFireWritable> {
 
         public void reduce(Text key,
                            Iterable<ForestFireWritable> values,
-                           Context con) throws IOException, InterruptedException {
-
+                           Context context) throws IOException, InterruptedException {
+            // define variaveis para maior vento e temperatura para um mes que chega como chave
             double maxTemp = Double.MIN_VALUE;
-            double maxWind = Double.MIN_VALUE;
-
-            for (ForestFireWritable o : values) {
-                if (o.getTemp() > maxTemp) {
-                    maxTemp = o.getTemp();
-                }
-                if (o.getWind() > maxWind) {
-                    maxWind = o.getWind();
-                }
+            double maxVento = Double.MIN_VALUE;
+            for(ForestFireWritable o : values){
+                if (o.getTemperatura() > maxTemp) maxTemp = o.getTemperatura();
+                if (o.getVento() > maxVento) maxVento = o.getVento();
             }
 
-            con.write(key, new ForestFireWritable(maxTemp, maxWind));
+            // escrevendo os maiores valores em arquivo
+            context.write(key, new ForestFireWritable(maxTemp, maxVento));
 
         }
     }

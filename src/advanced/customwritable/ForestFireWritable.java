@@ -8,72 +8,66 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Objects;
 
+
 public class ForestFireWritable implements WritableComparable<ForestFireWritable> {
 
-    private double temp;
-    private double wind;
+    private double temperatura;
+    private double vento;
 
     public ForestFireWritable() {
-
     }
 
-    public ForestFireWritable(double temp, double wind) {
-        this.temp = temp;
-        this.wind = wind;
+    public ForestFireWritable(double temperatura, double vento) {
+        this.temperatura = temperatura;
+        this.vento = vento;
     }
 
-    public double getTemp() {
-        return temp;
+    public double getTemperatura() {
+        return temperatura;
     }
 
-    public void setTemp(double temp) {
-        this.temp = temp;
+    public void setTemperatura(double temperatura) {
+        this.temperatura = temperatura;
     }
 
-    public double getWind() {
-        return wind;
+    public double getVento() {
+        return vento;
     }
 
-    public void setWind(double wind) {
-        this.wind = wind;
+    public void setVento(double vento) {
+        this.vento = vento;
     }
+
 
     @Override
     public int hashCode() {
-        return Objects.hash(temp, wind);
+        return Objects.hash(vento, temperatura);
     }
 
     @Override
     public int compareTo(ForestFireWritable o) {
-        if (this.hashCode() < o.hashCode()) {
-            return -1;
-        }
-        else if (this.hashCode() > o.hashCode()) {
-            return +1;
-        }
-        else {
-            return 0;
-        }
+        if (this.hashCode() < o.hashCode()) return -1;
+        else if (this.hashCode() > o.hashCode()) return +1;
+        return 0;
     }
 
     @Override
     public void write(DataOutput dataOutput) throws IOException {
-        dataOutput.writeDouble(temp);
-        dataOutput.writeDouble(wind);
+        dataOutput.writeDouble(temperatura);
+        dataOutput.writeDouble(vento);
     }
 
     @Override
     public void readFields(DataInput dataInput) throws IOException {
-        temp = dataInput.readDouble();
-        wind = dataInput.readDouble();
+        temperatura = dataInput.readDouble();
+        vento = dataInput.readDouble();
     }
 
     @Override
     public String toString() {
-        return "{"+
-                "temperatura = " + temp +
-                ", vento = " + wind +
-                "}";
+        return "{" +
+                "temperatura=" + temperatura +
+                ", vento=" + vento +
+                '}';
     }
-
 }
