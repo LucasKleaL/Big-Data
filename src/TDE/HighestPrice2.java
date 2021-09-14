@@ -3,7 +3,8 @@ package TDE;
 import TDE.CustomWritable.HighestPrice2Writable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.*;
+import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -16,47 +17,46 @@ import java.io.IOException;
 
 public class HighestPrice2 {
 
-    public static void main(String args[]) throws IOException, ClassNotFoundException, InterruptedException {
-
+    public static void main(String[] args) throws Exception {
         BasicConfigurator.configure();
 
         Configuration c = new Configuration();
-
         String[] files = new GenericOptionsParser(c, args).getRemainingArgs();
 
-        //  Arquivo de entrada
+        // arquivo de entrada
         Path input = new Path(files[0]);
 
-        //  Arquivo de saida
+        // arquivo de saida
         Path output = new Path(files[1]);
 
-        //  Criacao do job
-        Job j = new Job(c, "TransactionsAvg");
+        // criacao do job e seu nome
+        Job j = new Job(c, "Seis");
 
-        //  Registro das classes
+        // registro de classes
         j.setJarByClass(HighestPrice2.class);
-        j.setMapperClass(MapForAverage.class);
-        j.setReducerClass(ReduceForAverage.class);
+        j.setMapperClass(SeisMapper.class);
+        j.setReducerClass(SeisReducer.class);
 
-        //  Map
+        // definicao dos tipos de saida
+        // map
         j.setMapOutputKeyClass(Text.class);
         j.setMapOutputValueClass(HighestPrice2Writable.class);
 
-        //  Reduce
+        // reduce
         j.setOutputKeyClass(Text.class);
         j.setOutputValueClass(DoubleWritable.class);
 
+        // definicao dos arquivos de entrada e saida
         FileInputFormat.addInputPath(j, input);
         FileOutputFormat.setOutputPath(j, output);
 
+        // executa o job
         System.exit(j.waitForCompletion(true) ? 0 : 1);
-
     }
 
-
-    public static class MapForAverage extends Mapper<LongWritable, Text, Text, HighestPrice2Writable> {
-        public void map(LongWritable key, Text value, Context con)
-                throws IOException, InterruptedException {
+    public static class SeisMapper extends Mapper<Object, Text, Text, HighestPrice2Writable> {
+        public void map(Object key, Text value, Context context) throws IOException,
+                InterruptedException {
 
             // Pega linha
             String linha = value.toString();
@@ -72,15 +72,16 @@ public class HighestPrice2 {
             double quantity = Double.parseDouble(campos[8]);
 
             // enviando informacao pro reduce
-            con.write(new Text(year), new HighestPrice2Writable(quantity, price));
-
+            context.write(new Text(year), new HighestPrice2Writable(quantity, price));
         }
-
     }
 
-    public static class ReduceForAverage extends Reducer<Text, HighestPrice2Writable, Text, DoubleWritable> {
-        public void reduce(Text key, Iterable<HighestPrice2Writable> values, Context con)
-                throws IOException, InterruptedException {
+    public static class SeisReducer extends Reducer<Text, HighestPrice2Writable, Text, DoubleWritable> {
+
+        public void reduce(Text key,
+                           Iterable<HighestPrice2Writable> values,
+                           Context context) throws IOException, InterruptedException {
+            // define variaveis para maior preco e mercadoria para um ano que chega como chave
 
             double maxPricePorUnity = Double.MIN_VALUE;
 
@@ -90,9 +91,9 @@ public class HighestPrice2 {
             }
 
             // escrevendo os maiores valores em arquivo
-            con.write(new Text(key), new DoubleWritable(maxPricePorUnity));
-        }
+            context.write(key, new DoubleWritable(maxPricePorUnity));
 
+        }
     }
 
 }
