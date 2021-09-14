@@ -1,9 +1,9 @@
 package TDE;
 
-import TDE.CustomWritable.HighestPrice2Writable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -17,46 +17,47 @@ import java.io.IOException;
 
 public class HighestPrice2 {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String args[]) throws IOException, ClassNotFoundException, InterruptedException {
+
         BasicConfigurator.configure();
 
         Configuration c = new Configuration();
+
         String[] files = new GenericOptionsParser(c, args).getRemainingArgs();
 
-        // arquivo de entrada
+        //  Arquivo de entrada
         Path input = new Path(files[0]);
 
-        // arquivo de saida
+        //  Arquivo de saida
         Path output = new Path(files[1]);
 
-        // criacao do job e seu nome
-        Job j = new Job(c, "Seis");
+        //  Criacao do job
+        Job j = new Job(c, "TransactionsAvg");
 
-        // registro de classes
+        //  Registro das classes
         j.setJarByClass(HighestPrice2.class);
-        j.setMapperClass(SeisMapper.class);
-        j.setReducerClass(SeisReducer.class);
+        j.setMapperClass(MapForAverage.class);
+        j.setReducerClass(ReduceForAverage.class);
 
-        // definicao dos tipos de saida
-        // map
+        //  Map
         j.setMapOutputKeyClass(Text.class);
-        j.setMapOutputValueClass(HighestPrice2Writable.class);
+        j.setMapOutputValueClass(DoubleWritable.class);
 
-        // reduce
+        //  Reduce
         j.setOutputKeyClass(Text.class);
         j.setOutputValueClass(DoubleWritable.class);
 
-        // definicao dos arquivos de entrada e saida
         FileInputFormat.addInputPath(j, input);
         FileOutputFormat.setOutputPath(j, output);
 
-        // executa o job
         System.exit(j.waitForCompletion(true) ? 0 : 1);
+
     }
 
-    public static class SeisMapper extends Mapper<Object, Text, Text, HighestPrice2Writable> {
-        public void map(Object key, Text value, Context context) throws IOException,
-                InterruptedException {
+
+    public static class MapForAverage extends Mapper<LongWritable, Text, Text, DoubleWritable> {
+        public void map(LongWritable key, Text value, Context con)
+                throws IOException, InterruptedException {
 
             // Pega linha
             String linha = value.toString();
@@ -64,36 +65,35 @@ public class HighestPrice2 {
             if (linha.startsWith("country_or_area")) return;
 
             // Quebra em campos
-            String[] campos = linha.split(",");
+            String[] campos = linha.split(";");
 
-            // Pega ano, mercadoria e preco
-            String year = campos[1];
+
+            String keyValue = campos[1] + " " + campos[3];
+
             double price = Double.parseDouble(campos[5]);
-            double quantity = Double.parseDouble(campos[8]);
 
             // enviando informacao pro reduce
-            context.write(new Text(year), new HighestPrice2Writable(quantity, price));
+            con.write(new Text(keyValue), new DoubleWritable(price));
+
         }
+
     }
 
-    public static class SeisReducer extends Reducer<Text, HighestPrice2Writable, Text, DoubleWritable> {
+    public static class ReduceForAverage extends Reducer<Text, DoubleWritable, Text, DoubleWritable> {
+        public void reduce(Text key, Iterable<DoubleWritable> values, Context con)
+                throws IOException, InterruptedException {
 
-        public void reduce(Text key,
-                           Iterable<HighestPrice2Writable> values,
-                           Context context) throws IOException, InterruptedException {
-            // define variaveis para maior preco e mercadoria para um ano que chega como chave
+            double maxPrice = Double.MIN_VALUE;
 
-            double maxPricePorUnity = Double.MIN_VALUE;
-
-            for(HighestPrice2Writable o : values){
-                if ((o.getPrice() / o.getUnit()) > maxPricePorUnity)
-                    maxPricePorUnity = (o.getPrice() / o.getUnit());
+            for(DoubleWritable o : values){
+                if (o.get()  > maxPrice)
+                    maxPrice = o.get();
             }
 
             // escrevendo os maiores valores em arquivo
-            context.write(key, new DoubleWritable(maxPricePorUnity));
-
+            con.write(key, new DoubleWritable(maxPrice));
         }
+
     }
 
 }
