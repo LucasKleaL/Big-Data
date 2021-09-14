@@ -10,16 +10,16 @@ import java.util.Objects;
 
 public class TransactionsPerFlowWritable implements WritableComparable<TransactionsPerFlowWritable>{
 
+    private String year;
     private String flow;
-    private int ocorrencia;
 
     public TransactionsPerFlowWritable() {
 
     }
 
-    public TransactionsPerFlowWritable(String flow, int ocorrencia) {
+    public TransactionsPerFlowWritable(String year, String flow) {
+        this.year = year;
         this.flow = flow;
-        this.ocorrencia = ocorrencia;
     }
 
     public String getFlow() {
@@ -30,17 +30,17 @@ public class TransactionsPerFlowWritable implements WritableComparable<Transacti
         this.flow = flow;
     }
 
-    public int getOcorrencia() {
-        return ocorrencia;
+    public String getYear() {
+        return year;
     }
 
-    public void setOcorrencia(int ocorrencia) {
-        this.ocorrencia = ocorrencia;
+    public void setYear(String year) {
+        this.year = year;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(flow, ocorrencia);
+        return Objects.hash(year, flow);
     }
 
     @Override
@@ -58,24 +58,22 @@ public class TransactionsPerFlowWritable implements WritableComparable<Transacti
 
     @Override
     public void write(DataOutput dataOutput) throws IOException {
-        dataOutput.writeChars(flow);
-        dataOutput.writeInt(ocorrencia);
+        dataOutput.writeUTF(year);
+        dataOutput.writeUTF(flow);
     }
 
     @Override
     public void readFields(DataInput dataInput) throws IOException {
-        flow = dataInput.readLine();
-        ocorrencia = dataInput.readInt();
+        year = dataInput.readUTF();
+        flow = dataInput.readUTF();
     }
 
-    /*
     @Override
     public String toString() {
-        return "{"+
-                "temperatura = " + temp +
-                ", vento = " + wind +
-                "}";
+        return "{ "+
+                "flow_type: " + this.flow +
+                " - year: " + this.year +
+                " }" + " total_transactions: ";
     }
-    */
 
 }

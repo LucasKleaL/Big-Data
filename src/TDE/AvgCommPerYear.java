@@ -50,7 +50,7 @@ public class AvgCommPerYear {
         FileOutputFormat.setOutputPath(j, output);
 
         System.exit(j.waitForCompletion(true) ? 0 : 1);
-        
+
     }
 
 

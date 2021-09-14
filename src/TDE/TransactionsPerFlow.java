@@ -4,7 +4,6 @@ import TDE.CustomWritable.TransactionsPerFlowWritable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -40,11 +39,14 @@ public class TransactionsPerFlow {
         j.setReducerClass(TransactionsPerFlow.ReducerForTransactionsPerFlow.class);
 
         //  Definição dos tipos de saida
-        j.setMapOutputKeyClass(Text.class);
-        j.setMapOutputValueClass(TransactionsPerFlowWritable.class);
 
-        j.setOutputKeyClass(Text.class);
-        j.setOutputValueClass(Text.class);
+        //  Map
+        j.setMapOutputKeyClass(TransactionsPerFlowWritable.class);
+        j.setMapOutputValueClass(IntWritable.class);
+
+        //  Reduce
+        j.setOutputKeyClass(TransactionsPerFlowWritable.class);
+        j.setOutputValueClass(IntWritable.class);
 
         //  Cadastro dos arquivos de entrada e saida
         FileInputFormat.addInputPath(j, input);
@@ -56,13 +58,17 @@ public class TransactionsPerFlow {
 
     }
 
-    public static class MapForTransactionsPerFlow extends Mapper<Object, Text, Text, TransactionsPerFlowWritable> {
+    public static class MapForTransactionsPerFlow extends Mapper<Object, Text, TransactionsPerFlowWritable, IntWritable> {
 
         public void map(Object key, Text value, Context con)
                 throws IOException, InterruptedException {
 
             //  Extraindo o conteudo da linha
             String content = value.toString();
+
+            if (content.startsWith("country_or_area")) {
+                return;
+            }
 
             //  Quebrando a linha
             String[] contentSplit = content.split(";");
@@ -75,33 +81,24 @@ public class TransactionsPerFlow {
 
             int occurrence = 1;
 
-            con.write(new Text(year), new TransactionsPerFlowWritable(flowType, occurrence));
+            con.write(new TransactionsPerFlowWritable(year, flowType), new IntWritable(occurrence));
 
         }
 
     }
 
-    public static class ReducerForTransactionsPerFlow extends Reducer<Text, TransactionsPerFlowWritable, Text, Text> {
+    public static class ReducerForTransactionsPerFlow extends Reducer<TransactionsPerFlowWritable, IntWritable, TransactionsPerFlowWritable, IntWritable> {
 
-        public void reduce(Text key, Iterable<TransactionsPerFlowWritable> values, Context con)
+        public void reduce(TransactionsPerFlowWritable key, Iterable<IntWritable> values, Context con)
                 throws IOException, InterruptedException {
 
-            int sumExport = 0;
-            int sumImport = 0;
-            for (TransactionsPerFlowWritable v : values) {
+            int sum = 0;
 
-                if (v.getFlow() == "Export") {
-                    sumExport += v.getOcorrencia();
-                }
-                else if (v.getFlow() == "Import") {
-                    sumImport += v.getOcorrencia();
-                }
-
+            for (IntWritable v : values) {
+                sum += v.get();
             }
 
-            String result = "Export: "+sumExport+" - Import: "+sumImport;
-
-            con.write(key, new Text(result));
+            con.write(key, new IntWritable(sum));
 
         }
 
